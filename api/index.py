@@ -1,15 +1,12 @@
 import os
 from flask import Flask, render_template, request
 from werkzeug.utils import secure_filename
+import base64
 
 from services.vision_service import analyze_image
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = "uploads"
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 @app.route("/")
@@ -19,34 +16,31 @@ def index():
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
+    try:
+        if "image" not in request.files:
+            return "No image uploaded"
 
-    if "image" not in request.files:
-        return "No image uploaded"
+        file = request.files["image"]
 
-    file = request.files["image"]
+        if file.filename == "":
+            return "Please select an image"
 
-    if file.filename == "":
-        return "Please select an image"
+        image_bytes = file.read()
 
-    filename = secure_filename(file.filename)
-    filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+        image_base64 = base64.b64encode(image_bytes).decode("utf-8")
 
-    file.save(filepath)
+        result = analyze_image(image_bytes)
 
-    result = analyze_image(filepath)
+        return render_template(
+            "result.html",
+            result=result,
+            image_data=image_base64,
+            image_type=file.content_type
+        )
 
-    return render_template(
-        "result.html",
-        image=filename,
-        result=result
-    )
+    except Exception as e:
+        return f"<h3>Error</h3><pre>{str(e)}</pre>", 500
 
 
-@app.route("/uploads/<filename>")
-def uploaded_file(filename):
-    from flask import send_from_directory
-    return send_from_directory(
-        app.config["UPLOAD_FOLDER"],
-        filename
-    )
-
+if __name__ == "__main__":
+    app.run(debug=True)
