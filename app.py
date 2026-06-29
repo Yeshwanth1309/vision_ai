@@ -1,9 +1,8 @@
 import os
 from flask import Flask, render_template, request
-from werkzeug.utils import secure_filename
 import base64
 
-from api.services.vision_service import analyze_image
+from services.vision_service import analyze_image
 
 app = Flask(__name__)
 
